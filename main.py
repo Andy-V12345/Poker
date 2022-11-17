@@ -4,6 +4,7 @@ import time
 import math
 from colorama import Fore, Style
 
+
 class Player:
   def __init__(self, card1, card2, money, points, isAllIn, choice=""):
     self.card1 = card1
@@ -13,32 +14,30 @@ class Player:
     self.isAllIn = isAllIn
     self.choice = choice
 
+
 class Card:
   def __init__(self, suit, val):
     self.suit = suit
     self.val = val
-    
+
+  # resets the values of the card
   def restart(self):
     self.suit = "?"
     self.val = "?"
 
+  # returns a printable string value the card
   def display(self, isRevealed=False):
     if isRevealed:
       return f"{self.suit}{self.val}"
     return "?"
+
 
 clearL = lambda: os.system('clear')
 potMoney = 0
 suits = ["\u2663", "\u2666", "\u2660", "\u2665"]
 numbers = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 usedCards = []
-rankPoints = 0
 moveChoices = ["r", "ch", "ca", "f"]
-card1 = Card("?", "?")
-card2 = Card("?", "?")
-card3 = Card("?", "?")
-card4 = Card("?", "?")
-card5 = Card("?", "?")
 
 player = Player(Card("?", "?"), Card("?", "?"), 0, 0, False)
 computer = Player(Card("?", "?"), Card("?", "?"), 0, 0, False)
@@ -46,18 +45,34 @@ computer = Player(Card("?", "?"), Card("?", "?"), 0, 0, False)
 roundNumber = 0
 cardCount = 0
 computer.money = 0
-communityCards = [card1, card2, card3, card4, card5]
-
+communityCards = [Card("?", "?"),
+                  Card("?", "?"),
+                  Card("?", "?"),
+                  Card("?", "?"),
+                  Card("?", "?")]
 notEnough = 0
 notCompEnough = 0
 isBluff = False
+
 
 def printInstructions():
   print(
     "Warning: Entering a wrong option will automatically be a fold!\nAndy's Poker Game is not liable for any losses!\n"
   )
 
-def isFaceCard(card, isA1=False):
+# checks if a card is in a list
+def isCardInList(card, list):
+  for c in list:
+    if doCardsMatch(card, c):
+      return True
+  return False
+
+# checks if two cards are exactly the same
+def doCardsMatch(card1, card2):
+  return (card1.val == card2.val and card1.suit == card2.suit)
+
+# converts the string value of a card to the appropriate integer value
+def convert(card, isA1=False):
   if card.val == "K":
     return 13
   elif card.val == "Q":
@@ -72,11 +87,12 @@ def isFaceCard(card, isA1=False):
   else:
     return int(card.val)
 
-# adds points to a the ranking of a hand based on the cards value
-def highNumber(points, cardOne, cardTwo, isSecondHigh):
-  rankPoints1 = isFaceCard(cardOne) * 0.001
-  rankPoints2 = isFaceCard(cardTwo) * 0.001
 
+# adds points to the ranking of a hand based on the cards value
+def highNumber(points, cardOne, cardTwo, isSecondHigh):
+  rankPoints1 = convert(cardOne) * 0.001
+  rankPoints2 = convert(cardTwo) * 0.001
+  
   if isSecondHigh == False:
     if rankPoints1 > rankPoints2:
       return (points + rankPoints1)
@@ -87,19 +103,13 @@ def highNumber(points, cardOne, cardTwo, isSecondHigh):
   else:
     return (points + rankPoints1 + rankPoints2)
 
+
 # calculates the ranking of a hand
 def whoWins(points, cardOne, cardTwo):
-  global card4
-  global card5
-  global card1
-  global card2
-  global card3
+  global communityCards
   global cardCount
-  global player
-  global computer
-
+  
   points = 0
-  flushCounter = 1
   isFullHouse = False
   isStraight = False
   isBigStraight = False
@@ -117,9 +127,7 @@ def whoWins(points, cardOne, cardTwo):
   fullHigh = 0
   fourHigh = 0
   pairSecondHigh = 0
-  communityCardsTotal = [card1, card2, card3, card4, card5]
   availCards = [cardOne, cardTwo]
-  communityCards = []
   numsInStraight = []
   cardsInStraight = []
   numsInFlush = []
@@ -128,94 +136,97 @@ def whoWins(points, cardOne, cardTwo):
   pairs = {}
   threePairs = {}
   fourPairs = {}
+
+  # creates a list of cards that have been revealed and can be used to calculate the ranking of a hand
   locCardCount = cardCount
   if locCardCount > 5:
     locCardCount = 5
   unrankedCards = {
-    isFaceCard(cardOne, True): cardOne,
-    isFaceCard(cardTwo, True): cardTwo
+    convert(cardOne, True): cardOne,
+    convert(cardTwo, True): cardTwo
   }
-
   for i in range(locCardCount):
-    communityCards.append(communityCardsTotal[i])
-    unrankedCards[isFaceCard(communityCardsTotal[i], True)] = communityCardsTotal[i]
-    availCards.append(communityCardsTotal[i])
+    unrankedCards[convert(communityCards[i], True)] = communityCards[i]
+    availCards.append(communityCards[i])
 
-  #puts the cards available in order from least to highest value
+  # puts the cards available in order from least to highest value
   keyList = unrankedCards.keys()
   sortedKeys = sorted(keyList)
-
-  #calculates a 10, J, Q, K, A straight
-
+  
+  # calculates a 10, J, Q, K, A straight
   if 1 in sortedKeys and 13 in sortedKeys and 12 in sortedKeys and 11 in sortedKeys and 10 in sortedKeys:
     isStraight = True
     isBigStraight = True
     straightHigh = 14
+
+    # keeps track of cards that are in the straight
     cardsInStraight.append(unrankedCards[1])
     cardsInStraight.append(unrankedCards[13])
     cardsInStraight.append(unrankedCards[12])
     cardsInStraight.append(unrankedCards[11])
     cardsInStraight.append(unrankedCards[10])
   else:
-    #calculates a normal straight
+    # calculates a normal straight
     for i in range(len(sortedKeys) - 1):
-      if sortedKeys[i] - sortedKeys[i + 1] == -1:
-        numsInStraight.append(sortedKeys[i])
-        numsInStraight.append(sortedKeys[i + 1])
-        cardsInStraight.append(unrankedCards[sortedKeys[i]])
-        cardsInStraight.append(unrankedCards[sortedKeys[i + 1]])
-      elif sortedKeys[i] - sortedKeys[i + 1] != 0:
-        if len(cardsInStraight) < 5:
+      # since sortedKeys is already in ascending order the difference of the current element and next element must equal -1 in order for them to be sequential
+      if sortedKeys[i] - sortedKeys[i + 1] in [0,-1]:
+        # keeps track of the number values and the cards in the straight
+        if i == 0:
+          numsInStraight.append(sortedKeys[i])
+          numsInStraight.append(sortedKeys[i + 1])
+          cardsInStraight.append(unrankedCards[sortedKeys[i + 1]])
+          cardsInStraight.append(unrankedCards[sortedKeys[i]])
+        else:
+          numsInStraight.append(sortedKeys[i + 1])
+          cardsInStraight.append(unrankedCards[sortedKeys[i + 1]])
+      else:
+        # clears the two lists if sortedKeys[i] and sortedKeys[i+1] are not sequential and if a straight has not been found. If a straight has been found, ends the loop
+        if len(list(dict.fromkeys(numsInStraight))) < 5:
           numsInStraight.clear()
           cardsInStraight.clear()
-
-  if len(cardsInStraight) >= 5:
+        else:
+          break
+          
+  # checks if a straight has been found and calculates the ranking of that straight if there is one
+  if len(list(dict.fromkeys(numsInStraight))) >= 5:
     isStraight = True
     if max(numsInStraight) > straightHigh:
       straightHigh = max(numsInStraight)
-
-  #calculates if there is a flush
-  if cardOne.suit == cardTwo.suit:
-    cardsInFlush.append(cardOne)
-    cardsInFlush.append(cardTwo)
-    flushCounter += 1
-    for i in communityCards:
-      if cardOne.suit == i.suit:
-        flushCounter += 1
-        cardsInFlush.append(i)
-  else:
-    cardsInFlush.append(cardOne)
-    for i in communityCards:
-      if cardOne.suit == i.suit:
-        flushCounter += 1
-        cardsInFlush.append(i)
-    if flushCounter < 5:
-      cardsInFlush.clear()
-      cardsInFlush.append(cardTwo)
-      flushCounter = 1
-      for i in communityCards:
-        if cardTwo.suit == i.suit:
+      
+  # calculates if there is a flush
+  flushCounter = 1
+  # used range(len(availCards)-4) because if i is at the end of the range and a flush has not been found yet, then a flush does not exist
+  for i in range(len(availCards)-4):
+      cardsInFlush.append(availCards[i])
+      for j in range(i+1,len(availCards)):
+        if availCards[i].suit == availCards[j].suit:
+          cardsInFlush.append(availCards[j])
           flushCounter += 1
-          cardsInFlush.append(i)
+      if flushCounter >= 5:
+        isFlush = True
+        break
+      else:
+        flushCounter = 1
+        cardsInFlush.clear()
 
-  if flushCounter >= 5:
-    isFlush = True
-    for card in cardsInFlush:
-      numsInFlush.append(isFaceCard(card.val))
+  # finds the highest card value in the flush
   if isFlush:
+    for card in cardsInFlush:
+      numsInFlush.append(convert(card))
     flushHigh = max(numsInFlush)
 
-  #sorts matching cards into a dictionary called cardPairs
+  # sorts matching cards into a dictionary called cardPairs {cardValue: [Card]}
 
   for i in availCards:
     for j in range(availCards.index(i), len(availCards)):
-      if availCards.index(i) != j and i.val == availCards[j].val:
-        if not (isFaceCard(i) in cardPairs.keys()):
-          cardPairs[isFaceCard(i)] = [i, availCards[j]]
+      if not (doCardsMatch(i, availCards[j])) and i.val == availCards[j].val:
+        if not (convert(i) in cardPairs.keys()):
+          cardPairs[convert(i)] = [i, availCards[j]]
         else:
-          cardPairs[isFaceCard(i)].append(availCards[j])
-
-  # determines whether there is a three of a kind, four of a kind, or a two pair 
+          if not (availCards[j] in cardPairs[convert(i)]):
+            cardPairs[convert(i)].append(availCards[j])
+  
+  # determines whether there is a three of a kind, four of a kind, or a two pair
   for pairNumber in cardPairs:
     if len(cardPairs[pairNumber]) == 3:
       isThreeKind = True
@@ -233,7 +244,7 @@ def whoWins(points, cardOne, cardTwo):
         pairHigh = pairNumber
       pairs[pairNumber] = cardPairs.get(pairNumber)
 
-  #calculates the high card for each type of hand
+  # calculates the high card for each type of hand
   if isThreeKind and isPair:
     isFullHouse = True
     fullHigh = threeHigh
@@ -247,9 +258,9 @@ def whoWins(points, cardOne, cardTwo):
   #calculates if there is a straight flush or royal flush
   flushCounter = 1
   if isStraight:
-    for i in range(len(cardsInStraight)):
-      for card in cardsInStraight:
-        if cardsInStraight[i].suit == card.suit and cardsInStraight[i] != card:
+    for i in range(len(cardsInStraight)-4):
+      for j in range(i+1,len(cardsInStraight)):
+        if cardsInStraight[i].suit == cardsInStraight[j].suit:
           flushCounter += 1
       if flushCounter >= 5:
         if isBigStraight:
@@ -259,8 +270,7 @@ def whoWins(points, cardOne, cardTwo):
       else:
         flushCounter = 1
 
-  #calculates the number of points based on the hand
-
+  # calculates the number of points based on the hand
   if isRoyalFlush:
     points = 24
   elif isStraightFlush:
@@ -298,17 +308,11 @@ def whoWins(points, cardOne, cardTwo):
 
 
 def printCommCards():
-  global card1
-  global card2
-  global card3
   global potMoney
   global cardCount
-  global card4
-  global card5
   global player
   global computer
-
-  communityCards = [card1, card2, card3, card4, card5]
+  global communityCards
 
   print("Pot: $" + str(potMoney))
 
@@ -316,7 +320,7 @@ def printCommCards():
 
   for i in range(5):
     if i >= cardCount:
-      print(communityCards[i].display(False) + "   ", end='')
+      print(communityCards[i].display() + "   ", end='')
     else:
       if communityCards[i].suit == suits[1] or communityCards[i].suit == suits[
           3]:
@@ -370,26 +374,19 @@ def printUserInfo():
 #procedure when someone folds
 def foldProcedure():
   global potMoney
-  global card1
-  global card2
-  global card3
-  global card4
-  global card5
   global cardCount
   global player
   global computer
   global notEnough
   global notCompEnough
-
-  card1.restart()
-  card2.restart()
-  card3.restart()
-  card4.restart()
-  card5.restart()
+  global communityCards
+  
   player.card1.restart()
   player.card2.restart()
   computer.card1.restart()
   computer.card2.restart()
+  for card in communityCards:
+    card.restart()
   notEnough = 0
   notCompEnough = 0
   cardCount = 0
@@ -419,10 +416,11 @@ def procedure():
   global player
   global computer
 
-  printInstructions()
-  printComputerInfo()
   if player.isAllIn or computer.isAllIn:
     cardCount = 6
+  
+  printInstructions()
+  printComputerInfo()
   printCommCards()
   printUserInfo()
 
@@ -433,7 +431,8 @@ def procedure():
     if player.choice == "ch":
       print("The computer is thinking...")
       time.sleep(1.5)
-      computer.points = whoWins(computer.points, computer.card1, computer.card2)
+      computer.points = whoWins(computer.points, computer.card1,
+                                computer.card2)
       if computer.points >= 1:
         computer.choice = moveChoices[0]
       else:
@@ -534,7 +533,8 @@ def procedure():
       potMoney += player.choice
       print("The computer is thinking...")
       time.sleep(1.5)
-      computer.points = whoWins(computer.points, computer.card1, computer.card2)
+      computer.points = whoWins(computer.points, computer.card1,
+                                computer.card2)
 
       if computer.money >= 100:
         if player.choice >= math.floor(
@@ -595,26 +595,28 @@ def procedure():
       cardCount = 0
       foldProcedure()
   else:
-    playerPoints = 0
+    player.points = 0
     computer.points = 0
-    playerPoints = whoWins(playerPoints, player.card1, player.card2)
+    player.points = whoWins(player.points, player.card1, player.card2)
     computer.points = whoWins(computer.points, computer.card1, computer.card2)
-
-    if playerPoints == computer.points:
-      playerPoints = highNumber(playerPoints, player.card1, player.card2, False)
+    
+    if player.points == computer.points:
+      player.points = highNumber(player.points, player.card1, player.card2,
+                                False)
       computer.points = highNumber(computer.points, computer.card1,
                                    computer.card2, False)
-      if playerPoints == computer.points:
-        playerPoints = highNumber(playerPoints, player.card1, player.card2, True)
+      if player.points == computer.points:
+        player.points = highNumber(player.points, player.card1, player.card2,
+                                  True)
         computer.points = highNumber(computer.points, computer.card1,
                                      computer.card2, True)
-
-    if playerPoints == computer.points:
+    
+    if player.points == computer.points:
       print("It's a tie")
       player.money += math.floor(potMoney / 2)
       computer.money += math.floor(potMoney / 2)
       foldProcedure()
-    elif playerPoints > computer.points:
+    elif player.points > computer.points:
       if computer.money == 0:
         print("The computer is bankrupt! You win! :D")
       else:
@@ -636,25 +638,29 @@ def procedure():
         foldProcedure()
 
 
-started = input("Type 's' to begin the game: ")
-clearL()
-print("Welcome to Andy's Poker Game!!!!! It's you vs. the computer.\n")
-printInstructions()
+def deal():
+  global usedCards
+  
+  while True:
+    card = Card(random.choice(suits), random.choice(numbers))
+    if not isCardInList(card, usedCards):
+      usedCards.append(card)
+      return card
+
 
 #procedure for the poker game pre-flop
+
+
+
 def initialProcedure():
   global potMoney
   global roundNumber
-  global card1
-  global card2
-  global card3
   global cardCount
-  global card4
-  global card5
   global player
   global computer
   global usedCards
-  
+  global communityCards
+
   clearL()
 
   printInstructions()
@@ -663,22 +669,10 @@ def initialProcedure():
 
   # deals cards to the computer and the player
 
-  player.card1 = Card(random.choice(suits), random.choice(numbers))
-  player.card2 = Card(random.choice(suits), random.choice(numbers))
-
-  while player.card1 == player.card2:
-    player.card2 = Card(random.choice(suits), random.choice(numbers))
-
-  usedCards.append(player.card1)
-  usedCards.append(player.card2)
-
-  while 1 == 1:
-    computer.card1 = Card(random.choice(suits), random.choice(numbers))
-    computer.card2 = Card(random.choice(suits), random.choice(numbers))
-    if not (computer.card1 in usedCards) and not (computer.card2 in usedCards):
-      usedCards.append(computer.card1)
-      usedCards.append(computer.card2)
-      break
+  player.card1 = deal()
+  player.card2 = deal()
+  computer.card1 = deal()
+  computer.card2 = deal()
 
   printUserInfo()
 
@@ -714,28 +708,12 @@ def initialProcedure():
       potMoney = 0
       print("You folded!")
       foldProcedure()
-
-  while 1 == 1:
-    card1 = Card(random.choice(suits), random.choice(numbers))
-    card2 = Card(random.choice(suits), random.choice(numbers))
-    card3 = Card(random.choice(suits), random.choice(numbers))
-    if not (card1 in usedCards) and not (card2 in usedCards) and not (card3 in usedCards):
-      usedCards.append(card1)
-      usedCards.append(card2)
-      usedCards.append(card3)
-      break
-
-  while 1 == 1:
-    card4 = Card(random.choice(suits), random.choice(numbers))
-    if not (card4 in usedCards):
-      usedCards.append(card4)
-      break
-  while 1 == 1:
-    card5 = Card(random.choice(suits), random.choice(numbers))
-    if not (card5 in usedCards):
-      usedCards.append(card5)
-      break
+      
+  for i in range(len(communityCards)):
+    communityCards[i] = deal()
+  
   procedure()
+
 
 def checkNumber():
   global player
@@ -749,6 +727,11 @@ def checkNumber():
     print("That's not a number!")
     checkNumber()
 
+
+started = input("Type 's' to begin the game: ")
+clearL()
+print("Welcome to Andy's Poker Game!!!!! It's you vs. the computer.\n")
+printInstructions()
 checkNumber()
 computer.money = player.money
 initialProcedure()
