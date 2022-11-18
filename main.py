@@ -41,6 +41,10 @@ moveChoices = ["r", "ch", "ca", "f"]
 
 player = Player(Card("?", "?"), Card("?", "?"), 0, 0, False)
 computer = Player(Card("?", "?"), Card("?", "?"), 0, 0, False)
+computer2 = Player(Card("?", "?"), Card("?", "?"), 0, 0, False)
+computer3 = Player(Card("?", "?"), Card("?", "?"), 0, 0, False)
+
+queue = [computer, player, computer2, computer3]
 
 roundNumber = 0
 cardCount = 0
@@ -333,9 +337,9 @@ def printCommCards():
   print("-----------------------------------------------\n")
 
 
-def printComputerInfo():
-  global computer
+def printComputerInfo(computer):
   global cardCount
+
   print("Computer's cash: $", int(round(computer.money)), "\n", sep='')
   if cardCount == 6:
     print("Computer's cards: ")
@@ -377,6 +381,8 @@ def foldProcedure():
   global cardCount
   global player
   global computer
+  global computer2
+  global computer3
   global notEnough
   global notCompEnough
   global communityCards
@@ -418,6 +424,8 @@ def procedure():
 
   if player.isAllIn or computer.isAllIn:
     cardCount = 6
+  
+  clearL()
   
   printInstructions()
   printComputerInfo()
